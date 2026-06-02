@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SEBI Knowledge Assistant</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg-color: #f8fafc;
+            --card-bg: rgba(255, 255, 255, 0.75);
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --user-bubble: #2563eb;
+            --bot-bubble: #ffffff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Animated Ambient Background */
+        body {
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(-45deg, #eff6ff, #dbeafe, #e0e7ff, #f1f5f9);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            padding: 20px;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Premium Glassmorphism Container */
+        .chat-container {
+            width: 100%;
+            max-width: 600px;
+            height: 90vh;
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 24px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.6);
+        }
+
+        .chat-header {
+            background: rgba(255, 255, 255, 0.85);
+            color: var(--text-main);
+            padding: 20px 24px;
+            font-size: 1.15rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            backdrop-filter: blur(10px);
+            z-index: 10;
+        }
+
+        .header-icon {
+            background: #dbeafe;
+            color: var(--primary);
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+
+        .chat-box {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            scroll-behavior: smooth;
+        }
+
+        /* Invisible Scrollbar for sleekness */
+        .chat-box::-webkit-scrollbar { width: 6px; }
+        .chat-box::-webkit-scrollbar-track { background: transparent; }
+        .chat-box::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        .message {
+            max-width: 85%;
+            padding: 16px 20px;
+            line-height: 1.6;
+            font-size: 0.95rem;
+            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+            transform: translateY(15px);
+        }
+
+        .user-message {
+            align-self: flex-end;
+            background: var(--user-bubble);
+            color: white;
+            border-radius: 20px 20px 4px 20px;
+            box-shadow: 0 8px 15px rgba(37, 99, 235, 0.2);
+        }
+
+        .bot-message {
+            align-self: flex-start;
+            background: var(--bot-bubble);
+            color: var(--text-main);
+            border-radius: 20px 20px 20px 4px;
+            border: 1px solid rgba(0, 0, 0, 0.04);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+        }
+
+        /* Markdown Styling for Bot Responses */
+        .bot-message p { margin-bottom: 10px; }
+        .bot-message p:last-child { margin-bottom: 0; }
+        .bot-message strong { color: #0f172a; font-weight: 700; }
+        .bot-message ul, .bot-message ol { padding-left: 20px; margin-bottom: 10px; }
+        .bot-message li { margin-bottom: 4px; }
+
+        .loading {
+            display: none;
+            padding: 0 25px 15px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dot-typing {
+            display: flex;
+            gap: 4px;
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            background-color: #94a3b8;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+
+        .dot:nth-child(1) { animation-delay: -0.32s; }
+        .dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        @keyframes slideUp {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Modern Input Area */
+        .input-wrapper {
+            padding: 20px 24px;
+            background: transparent;
+        }
+
+        .input-container {
+            display: flex;
+            align-items: center;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 20px;
+            padding: 6px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .input-container:focus-within {
+            border-color: var(--primary);
+            box-shadow: 0 4px 25px rgba(37, 99, 235, 0.15);
+        }
+
+        #user-input {
+            flex: 1;
+            border: none;
+            padding: 12px 16px;
+            font-size: 1rem;
+            background: transparent;
+            color: var(--text-main);
+            outline: none;
+        }
+
+        #user-input::placeholder {
+            color: #94a3b8;
+        }
+
+        #send-btn {
+            width: 44px;
+            height: 44px;
+            border: none;
+            border-radius: 16px;
+            cursor: pointer;
+            color: white;
+            background: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        #send-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            margin-left: -2px; /* Visual center adjustment */
+        }
+
+        #send-btn:hover { background: var(--primary-hover); transform: scale(1.05); }
+        #send-btn:active { transform: scale(0.95); }
+        #send-btn:disabled { background: #cbd5e1; cursor: not-allowed; transform: none; }
+
+        @media(max-width: 600px) {
+            body { padding: 0; }
+            .chat-container { height: 100vh; max-width: none; border-radius: 0; border: none; }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="chat-container">
+    <div class="chat-header">
+        <div class="header-icon">🏛️</div>
+        SEBI Knowledge Agent
+    </div>
+
+    <div class="chat-box" id="chat-box">
+        <div class="message bot-message">
+            <p>👋 <strong>Welcome!</strong> I'm your SEBI AI Assistant.</p>
+            <p>I can help you navigate official documentation. Ask me about:</p>
+            <ul>
+                <li>SEBI Regulations</li>
+                <li>IPO Guidelines</li>
+                <li>Mutual Funds</li>
+                <li>Investor Protection</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="loading" id="loading-indicator" style="display: none;">
+        <div class="dot-typing">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+        </div>
+        Analyzing document...
+    </div>
+
+    <div class="input-wrapper">
+        <div class="input-container">
+            <input type="text" id="user-input" placeholder="Ask your SEBI question..." autocomplete="off">
+            <button id="send-btn">
+                <svg viewBox="0 0 24 24"><path d="M22 2L11 13M22 2L15 22L11 13M11 13L2 9L22 2"/></svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ---------- CONFIGURATION ----------
+    const API_URL = "https://sebi-faq-service-1045979193890.us-central1.run.app/chat";
+    const SESSION_ID = "session_" + Math.random().toString(36).substring(2);
+
+    const chatBox = document.getElementById("chat-box");
+    const userInput = document.getElementById("user-input");
+    const sendBtn = document.getElementById("send-btn");
+    const loading = document.getElementById("loading-indicator");
+
+    // Configure marked.js to be safer and format line breaks properly
+    marked.setOptions({
+        breaks: true,
+        gfm: true
+    });
+
+    function addMessage(text, sender) {
+        const msgDiv = document.createElement("div");
+        msgDiv.classList.add("message");
+        msgDiv.classList.add(sender === "user" ? "user-message" : "bot-message");
+        
+        if (sender === "user") {
+            msgDiv.innerText = text;
+        } else {
+            // Parse Markdown for the bot's response
+            msgDiv.innerHTML = marked.parse(text);
+        }
+
+        chatBox.appendChild(msgDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    async function sendMessage() {
+        const message = userInput.value.trim();
+        if(!message) return;
+
+        addMessage(message, "user");
+        userInput.value = "";
+
+        sendBtn.disabled = true;
+        loading.style.display = "flex";
+
+        try {
+            const response = await fetch(API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    session_id: SESSION_ID,
+                    message: message
+                })
+            });
+
+            if(!response.ok) throw new Error("API Connection Failed");
+
+            const data = await response.json();
+            addMessage(data.response, "bot");
+
+        } catch(error) {
+            console.error(error);
+            addMessage("⚠️ **Connection Error:** Unable to connect to the backend server. Please ensure your FastAPI service is running.", "bot");
+        } finally {
+            sendBtn.disabled = false;
+            loading.style.display = "none";
+            userInput.focus();
+        }
+    }
+
+    userInput.addEventListener("keypress", function(event) {
+        if(event.key === "Enter") sendMessage();
+    });
+
+    sendBtn.addEventListener("click", sendMessage);
+</script>
+
+</body>
+</html>
